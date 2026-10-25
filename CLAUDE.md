@@ -54,8 +54,8 @@ que despliega el usuario, y llega a la API por HTTP (`VITE_API_URL`) y por Signa
   ni abstracciones que el plan no pida.
 - No implementar funcionalidades que la demo no tiene (ver "Fuera de alcance" en `PLAN.md`).
 - Nada de credenciales en el código: todo sale de `.env` (versionado solo `.env.example`).
-- Frontend: es repo git, pero la cuenta `YaxOFF` no tiene permiso de push a `David54s/rankeo-frontend`.
-  Antes de la Fase 7 pregunta al usuario a qué rama/remoto subir los cambios.
+- Frontend: es repo git. Subir cambios al remoto `yaxoff` (https://github.com/YaxOFF/rankeo-frontend-) en una rama nueva; `origin` (David54s) no acepta push.
+  Nunca trabajar directo en `main` del frontend.
 
 ## Comandos
 

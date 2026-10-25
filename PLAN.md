@@ -11,7 +11,7 @@ mismos cambios al momento.
 | Qué | Ruta |
 |---|---|
 | Backend (este repo) | `D:\YaxonFolder\Github\rankeo-backend` → sin remoto todavía (solo local; agregar con `git remote add origin <url>`) |
-| Frontend | `D:\YaxonFolder\Github\rankeo-frontend` (repo git; remoto `David54s/rankeo-frontend`, la cuenta `YaxOFF` hoy **no** tiene permiso de push) |
+| Frontend | `D:\YaxonFolder\Github\rankeo-frontend` (repo git; push al remoto `yaxoff` = https://github.com/YaxOFF/rankeo-frontend- ; `origin` = David54s, sin permiso de push) |
 | Docs del frontend (leer primero) | `rankeo-frontend/docs/MAP.md`, `docs/architecture/state-management.md`, `docs/architecture/data-layer.md` |
 | Lógica de negocio a portar | `src/room/roomReducer.ts` (todas las mutaciones), `src/room/roomService.ts` (bitácora, códigos, demo) |
 | Modelo / contrato | `src/types.ts` (`Room`, `Tier`, `Item`, `RoomAction`, `ActivityEntry`, `POOL`) |
@@ -241,7 +241,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 | Discriminador `type` no va primero en el JSON | `AllowOutOfOrderMetadataProperties = true` en las opciones JSON del hub |
 | Version de `EntityFrameworkCore.Design` ≠ la de Npgsql (CS1705) | Fijarlas juntas en Fase 0 |
 | Puertos 5432/8080 ocupados | Todo por variable; revisar con `netstat` en Fase 0 |
-| Push al frontend sin permiso (`YaxOFF` → 403 en `David54s/rankeo-frontend`) | Resolver antes de Fase 7 (colaborador o fork) |
+| Push al frontend | Resuelto: remoto `yaxoff` (YaxOFF/rankeo-frontend-); trabajar en rama nueva |
 
 ## Verificación final
 
