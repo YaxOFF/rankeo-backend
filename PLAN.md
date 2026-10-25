@@ -165,8 +165,8 @@ rankeo-backend/
 ## 5. Infraestructura
 
 `docker-compose.yml`:
-- `db`: `postgres:17-alpine`, volumen `pgdata`, healthcheck `pg_isready`, publicado en `127.0.0.1:${DB_PORT:-5432}`.
-- `api`: build `Rankeo.Api`, `depends_on: db (service_healthy)`, `${API_PORT:-8080}:8080`, volumen `imagenes:/data/imagenes`, `restart: unless-stopped`.
+- `db`: `postgres:17-alpine`, volumen `pgdata`, healthcheck `pg_isready`, publicado en `127.0.0.1:${DB_PORT:-5440}`.
+- `api`: build `Rankeo.Api`, `depends_on: db (service_healthy)`, `${API_PORT:-8088}:8080`, volumen `imagenes:/data/imagenes`, `restart: unless-stopped`.
 
 `.env.example`: `POSTGRES_PASSWORD` (obligatoria, `${VAR:?}`), `DB_PORT`, `API_PORT`,
 `ConnectionStrings__Rankeo` (localhost para `dotnet run`; compose la arma con `Host=db`),
@@ -240,7 +240,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 | `colorFor` distinto entre JS y C# con emoji | Vectores de prueba generados con el JS real |
 | Discriminador `type` no va primero en el JSON | `AllowOutOfOrderMetadataProperties = true` en las opciones JSON del hub |
 | Version de `EntityFrameworkCore.Design` ≠ la de Npgsql (CS1705) | Fijarlas juntas en Fase 0 |
-| Puertos 5432/8080 ocupados | Todo por variable; revisar con `netstat` en Fase 0 |
+| Puertos 5432/8080 ocupados | Resuelto: defaults 5440 (db) y 8088 (api), todo por variable |
 | Push al frontend | Resuelto: remoto `yaxoff` (YaxOFF/rankeo-frontend-); trabajar en rama nueva |
 
 ## Verificación final
@@ -286,7 +286,8 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - Decisiones: la `ApiFactory` pasa la cadena del contenedor por variable de entorno (gana sobre el `.env`
   local porque `CargarEnv` no pisa). `Program` es público sin `partial class` (.NET 10 lo genera).
   Se borró `appsettings.Development.json` (vacío de valor).
-- Pendientes: en esta máquina los puertos 5432 y 8080 ya están ocupados → usar `DB_PORT=5433` (y ajustar
-  `ConnectionStrings__Rankeo`) y otro `API_PORT` en el `.env` local. `Microsoft.AspNetCore.SignalR.Client`
-  se agrega a las pruebas en Fase 4.
+- Puertos: en esta máquina 5432–5434, 5439, 8080, 8081, 8085, 8086 y 8090 están ocupados → defaults
+  `DB_PORT=5440` y `API_PORT=8088` (compose, `.env.example` y `.env` local). Dentro de la red de Docker
+  siguen 5432 (db) y 8080 (api).
+- Pendientes: `Microsoft.AspNetCore.SignalR.Client` se agrega a las pruebas en Fase 4.
 
