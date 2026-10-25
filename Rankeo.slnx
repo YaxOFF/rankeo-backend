@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Rankeo.Api.Tests/Rankeo.Api.Tests.csproj" />
+  <Project Path="Rankeo.Api/Rankeo.Api.csproj" />
+</Solution>

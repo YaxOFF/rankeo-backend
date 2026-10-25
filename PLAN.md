@@ -256,8 +256,8 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 
 ## Avance
 
-- [x] **Plan** — plan aprobado, `PLAN.md` y `CLAUDE.md` creados, repo git local creado (2026-10-24; sin remoto).
-- [ ] **Fase 0 — Base**
+- [x] **Plan** — plan aprobado, `PLAN.md` y `CLAUDE.md` creados, repo git local creado (2026-10-24).
+- [x] **Fase 0 — Base** (2026-10-24)
 - [ ] **Fase 1 — Dominio**
 - [ ] **Fase 2 — Datos**
 - [ ] **Fase 3 — Salas HTTP**
@@ -270,4 +270,23 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 ### Bitácora
 
 <!-- Una entrada por fase terminada: fecha, qué se hizo, archivos clave, decisiones tomadas, pendientes para la siguiente fase. -->
+
+#### Fase 0 — Base (2026-10-24)
+
+- Hecho: `Rankeo.slnx` con `Rankeo.Api` (web vacío, net10.0) y `Rankeo.Api.Tests` (xUnit). Compose solo con
+  `db` (`postgres:17-alpine`, healthcheck, `127.0.0.1:${DB_PORT}`). `.env.example` con todas las variables del plan.
+  Remoto `origin` = https://github.com/YaxOFF/rankeo-backend.
+- Archivos clave: `Rankeo.Api/Program.cs` (función `CargarEnv`: lee el primer `.env` subiendo desde la carpeta
+  actual, sin pisar variables ya definidas; falla al arrancar si falta `ConnectionStrings__Rankeo`),
+  `Rankeo.Api.Tests/ApiFactory.cs` (`WebApplicationFactory<Program>` + `PostgreSqlContainer`, fixture por clase),
+  `Rankeo.Api.Tests/ArranqueTests.cs` (1 prueba: arranca la API y abre conexión con su cadena).
+- Versiones fijadas: `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3 (trae EF Core 10.0.4) +
+  `Microsoft.EntityFrameworkCore.Design` 10.0.4. Tests: `Microsoft.AspNetCore.Mvc.Testing` 10.0.13,
+  `Testcontainers.PostgreSql` 4.16.0.
+- Decisiones: la `ApiFactory` pasa la cadena del contenedor por variable de entorno (gana sobre el `.env`
+  local porque `CargarEnv` no pisa). `Program` es público sin `partial class` (.NET 10 lo genera).
+  Se borró `appsettings.Development.json` (vacío de valor).
+- Pendientes: en esta máquina los puertos 5432 y 8080 ya están ocupados → usar `DB_PORT=5433` (y ajustar
+  `ConnectionStrings__Rankeo`) y otro `API_PORT` en el `.env` local. `Microsoft.AspNetCore.SignalR.Client`
+  se agrega a las pruebas en Fase 4.
 
