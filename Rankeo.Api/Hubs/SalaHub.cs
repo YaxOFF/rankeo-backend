@@ -9,8 +9,7 @@ public class SalaHub(SalaService salas) : Hub
 {
     public async Task<object> Unirse(string codigo, string apodo)
     {
-        apodo = apodo?.Trim() ?? "";
-        if (apodo.Length is < 1 or > 30) throw new HubException("El apodo debe tener entre 1 y 30 caracteres.");
+        apodo = await Errores(() => Task.FromResult(SalaService.Apodo(apodo)));
         var sala = await Errores(() => salas.Cargar(codigo));
 
         if (Context.Items.TryGetValue("sala", out var v) && v is string anterior && anterior != sala.Codigo)

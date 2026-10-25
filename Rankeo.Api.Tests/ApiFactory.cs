@@ -17,6 +17,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public string ConnectionString => _db.GetConnectionString();
 
+    /// <summary>Volumen de imágenes de esta instancia (carpeta temporal).</summary>
+    public string ImagenesDir { get; } = Path.Combine(Path.GetTempPath(), "rankeo-pruebas", Guid.NewGuid().ToString("N"));
+
     /// <summary>Conexión al hub contra el TestServer (long polling: el TestServer no abre sockets reales).</summary>
     public async Task<HubConnection> Hub()
     {
@@ -37,11 +40,13 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // Gana sobre el .env local: CargarEnv no pisa variables ya definidas.
         Environment.SetEnvironmentVariable("ConnectionStrings__Rankeo", ConnectionString);
         Environment.SetEnvironmentVariable("CORS_ORIGINS", Origen);
+        Environment.SetEnvironmentVariable("IMAGENES_DIR", ImagenesDir);
     }
 
     async Task IAsyncLifetime.DisposeAsync()
     {
         await base.DisposeAsync();
         await _db.DisposeAsync();
+        if (Directory.Exists(ImagenesDir)) Directory.Delete(ImagenesDir, true);
     }
 }

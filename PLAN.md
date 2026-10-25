@@ -105,7 +105,7 @@ Errores HTTP como ProblemDetails con `detail` = mensaje de la demo; errores del 
 |---|---|---|
 | `POST /api/salas` | Crear sala (`RoomService.create`) | `{ title }` → `201 Room` (+ `version`); título > 80 → 400 "El título admite máximo 80 caracteres." |
 | `GET /api/salas/{codigo}` | Existe (`RoomService.exists`) | → `204` / `404` "No existe ninguna sala con el código X." |
-| `POST /api/salas/{codigo}/imagenes` | Subir imagen + `item:add` + bitácora "subió X" + broadcast | multipart `archivo`, `nombre`, `apodo` → `201 Item` |
+| `POST /api/salas/{codigo}/imagenes` | Subir imagen + `item:add` + bitácora "subió X" + broadcast | multipart `archivo`, `nombre` (vacío → `'Imagen'`), `apodo` → `201 Item` (`id` = Guid `N`, `url` = `/imagenes/{codigo}/{id}.{ext}`) |
 | `GET /imagenes/{codigo}/{archivo}` | Archivo estático del volumen | `Cache-Control: immutable`, con CORS (necesario para exportar PNG) |
 
 Rate limit nativo por IP: crear 10/min, existe 30/min, subir 60/min → 429.
@@ -262,7 +262,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - [x] **Fase 2 — Datos** (2026-10-24)
 - [x] **Fase 3 — Salas HTTP** (2026-10-24)
 - [x] **Fase 4 — Hub SignalR** (2026-10-24)
-- [ ] **Fase 5 — Imágenes**
+- [x] **Fase 5 — Imágenes** (2026-10-24)
 - [ ] **Fase 6 — Docker**
 - [ ] **Fase 7 — Frontend**
 - [ ] **Fase 8 — Cierre**
@@ -365,3 +365,25 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - Pendientes (Fase 5): el endpoint de subida debe llamar `Aplicar(codigo, new ItemAdd(...), apodo)` y emitir
   `state`/`activity` con `IHubContext<SalaHub>`; `item:delete` debe borrar archivo y fila de `Imagenes` (hoy solo
   quita el item del estado). Límite de 200 imágenes por sala va en esa fase.
+
+#### Fase 5 — Imágenes (2026-10-24)
+
+- Hecho: `Services/ImagenService.cs` (`Subir`: valida apodo/nombre/tamaño/firma, comprueba la sala, escribe
+  `IMAGENES_DIR/{codigo}/{guid}.{ext}`, agrega la fila `Imagenes` y llama `Aplicar(ItemAdd)`; si algo falla borra el
+  archivo). `POST /api/salas/{codigo}/imagenes` en `SalasController` (rate limit `subir` 60/min; emite `state` y
+  `activity` con `IHubContext<SalaHub>` tras el commit). `Aplicar` con `item:delete` borra la fila de `Imagenes` en la
+  misma transacción y el archivo después del commit; tope de 200 imágenes en `Validar` (bajo el `FOR UPDATE`).
+  `Program.cs`: `UseStaticFiles` en `/imagenes` sobre `IMAGENES_DIR` (se crea al arrancar), después de `UseCors`,
+  con `Cache-Control: public, max-age=31536000, immutable`.
+- Pruebas: `ImagenesTests.cs` (subida OK → 201, archivo en disco, `state`/`activity` "subió Gato" al grupo, GET con CORS,
+  `image/png` e `immutable`; nombre vacío → "Imagen"; firma inválida, > 512 KB, nombre > 30, apodo vacío → 400;
+  sala inexistente → 404 sin carpeta; tope 200 → 400 sin archivo ni fila huérfanos; `item:delete` borra archivo y fila).
+  `ApiFactory` usa una carpeta temporal por instancia como `IMAGENES_DIR`. 57 en verde.
+- Decisiones: mensajes nuevos "El nombre admite máximo 30 caracteres.", "Falta el archivo.",
+  "La imagen admite máximo {IMAGEN_MAX_KB} KB.", "Formato no admitido: usa webp, png, jpeg o gif.",
+  "Máximo 200 imágenes por sala.". La validación del apodo pasó a `SalaService.Apodo` (la usan hub y subida).
+  La fila `Imagenes` se agrega al contexto antes de `Aplicar` y se guarda en su transacción (mismo `DbContext` scoped).
+  El `id` del item es el Guid de la imagen (32 chars), así `item:delete` encuentra el archivo.
+- Pendientes (Fase 6): el volumen `imagenes:/data/imagenes` en compose; en local con `dotnet run`, `IMAGENES_DIR`
+  del `.env` (`/data/imagenes`) cae en la raíz de la unidad actual: usar p. ej. `./data/imagenes` (ignorado por git).
+

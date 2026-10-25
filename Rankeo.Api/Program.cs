@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.EntityFrameworkCore;
 using Rankeo.Api.Data;
 using Rankeo.Api.Hubs;
@@ -13,6 +14,7 @@ if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Rankeo"
 
 builder.Services.AddDbContext<RankeoDb>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Rankeo")));
 builder.Services.AddScoped<SalaService>();
+builder.Services.AddScoped<ImagenService>();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ErroresHandler>();
@@ -37,6 +39,7 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = porMinuto, Window = TimeSpan.FromMinutes(1) }));
     PorIp("crear", 10);
     PorIp("existe", 30);
+    PorIp("subir", 60);
 });
 
 var app = builder.Build();
@@ -46,6 +49,14 @@ using (var scope = app.Services.CreateScope())
 
 app.UseExceptionHandler();
 app.UseCors();
+// Después de UseCors: el PNG exportado necesita CORS en las imágenes. El nombre es un Guid, nunca cambia.
+var imagenesDir = Directory.CreateDirectory(ImagenService.Dir(app.Configuration)).FullName;
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(imagenesDir),
+    RequestPath = "/imagenes",
+    OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable",
+});
 app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<SalaHub>("/hubs/sala");

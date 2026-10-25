@@ -6,7 +6,7 @@ using Rankeo.Api.Modelos;
 
 namespace Rankeo.Api.Services;
 
-public class SalaService(RankeoDb db)
+public class SalaService(RankeoDb db, IConfiguration cfg)
 {
     public async Task<Sala> Crear(string? titulo)
     {
@@ -61,9 +61,22 @@ public class SalaService(RankeoDb db)
         sala.Version++;
         if (texto is not null)
             db.Bitacora.Add(new EntradaBitacora { SalaCodigo = codigo, Quien = apodo, Color = Calculos.ColorPara(apodo), Texto = texto });
+        var imagen = accion is ItemDelete d && Guid.TryParse(d.Id, out var id) ? await db.Imagenes.FindAsync(id) : null;
+        if (imagen is not null) db.Imagenes.Remove(imagen);
         await db.SaveChangesAsync();
         await tx.CommitAsync();
+        // Después del commit: si el borrado del archivo falla, la sala ya quedó bien.
+        if (imagen is not null) File.Delete(ImagenService.Ruta(cfg, codigo, imagen.Archivo));
         return (sala, texto is not null);
+    }
+
+    public const int MaxImagenes = 200;
+
+    public static string Apodo(string? apodo)
+    {
+        apodo = apodo?.Trim() ?? "";
+        if (apodo.Length is < 1 or > 30) throw new ReglaException("El apodo debe tener entre 1 y 30 caracteres.");
+        return apodo;
     }
 
     static readonly Regex Color = new("^#[0-9a-fA-F]{6}$");
@@ -74,6 +87,9 @@ public class SalaService(RankeoDb db)
     {
         switch (accion)
         {
+            case ItemAdd:
+                if (room.Items.Count >= MaxImagenes) throw new ReglaException($"Máximo {MaxImagenes} imágenes por sala.");
+                break;
             case TierAdd a:
                 if (room.Tiers.Count >= Room.MAX_TIERS) throw new ReglaException($"Máximo {Room.MAX_TIERS} filas.");
                 if (!IdFila.IsMatch(a.Id) || room.Tiers.Any(t => t.Id == a.Id)) throw new ReglaException("Id de fila inválido.");
