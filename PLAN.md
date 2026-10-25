@@ -424,5 +424,5 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   sala." y `JoinModal` muestra el error en vez de quedarse "Buscando…". Una sola conexión por pestaña (no se
   cierra al salir de la sala). `ponytail:` estado optimista simple: con dos acciones propias en vuelo, el `state`
   de la primera puede deshacer un instante la segunda hasta que llega el suyo.
-- Pendientes (Fase 8): PR/merge de `feat/backend-signalr` en el frontend (decide el usuario); `sh docs/docs.sh stale`
+- Pendientes (Fase 8): (`feat/backend-signalr` ya está en `main` del frontend, fast-forward 0ed1e18) `sh docs/docs.sh stale`
   y sellos `rev` de los docs tocados; README del backend; verificación final con dos perfiles reales.
