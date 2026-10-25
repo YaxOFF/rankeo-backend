@@ -265,7 +265,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - [x] **Fase 5 — Imágenes** (2026-10-24)
 - [x] **Fase 6 — Docker** (2026-10-24)
 - [x] **Fase 7 — Frontend** (2026-10-24)
-- [ ] **Fase 8 — Cierre**
+- [x] **Fase 8 — Cierre** (2026-10-24)
 
 ### Bitácora
 
@@ -426,3 +426,18 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   de la primera puede deshacer un instante la segunda hasta que llega el suyo.
 - Pendientes (Fase 8): (`feat/backend-signalr` ya está en `main` del frontend, fast-forward 0ed1e18) `sh docs/docs.sh stale`
   y sellos `rev` de los docs tocados; README del backend; verificación final con dos perfiles reales.
+
+#### Fase 8 — Cierre (2026-10-24)
+
+- Hecho: `README.md` del backend (arranque, variables, API, pruebas, proxy inverso con WebSocket). Docs del
+  frontend en la rama `docs/cierre-backend` (push a `yaxoff`, sale de `main` 0ed1e18): `folder-structure`
+  (`signalrRoomService.ts`), `page-components` (`addImage`), `custom-hooks` y `routing` (errores de conexión),
+  `helpers` (`useCORS`), y sellos `rev` de todos los docs a 0ed1e18; `sh docs/docs.sh stale` limpio.
+- Verificado: `dotnet test` 57, `npm test` 9, `npm run build` y `npm run lint` verdes. Prueba de punta a punta
+  con script (dos clientes SignalR reales contra `docker compose -p rankeo-prueba`): subir 3 imágenes, mover a S y
+  A, añadir fila, renombrar, vaciar, borrar → B ve cada cambio y la misma bitácora; imagen con CORS para el PNG;
+  15+15 movimientos simultáneos → A y B con el mismo estado (`version` 39); `down` + `up` → sala, imagen y
+  `version` siguen; `down -v`. La parte de navegador (dos pestañas, reconexión, PNG, `DEMO42`) se probó en Fase 7.
+- Decisiones: ninguna nueva.
+- Pendientes: fusionar `docs/cierre-backend` en `main` del frontend; prueba con dos perfiles de navegador
+  distintos si se quiere repetir la verificación manual completa.
