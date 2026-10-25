@@ -264,7 +264,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - [x] **Fase 4 — Hub SignalR** (2026-10-24)
 - [x] **Fase 5 — Imágenes** (2026-10-24)
 - [x] **Fase 6 — Docker** (2026-10-24)
-- [ ] **Fase 7 — Frontend**
+- [x] **Fase 7 — Frontend** (2026-10-24)
 - [ ] **Fase 8 — Cierre**
 
 ### Bitácora
@@ -403,3 +403,26 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   interfaces (el frontend va en otro contenedor/origen); la base solo en `127.0.0.1`.
 - Pendientes (Fase 7): el frontend apunta `VITE_API_URL` a `http://localhost:8088` (compose) y `CORS_ORIGINS` debe
   incluir su origen (`http://localhost:5173` por defecto).
+
+#### Fase 7 — Frontend (2026-10-24)
+
+- Hecho (rama `feat/backend-signalr` del frontend, push a `yaxoff`, sale de `docs/documentacion-inicial`):
+  `src/room/signalrRoomService.ts` (`SignalRRoomService`: `exists`/`create` por HTTP, `load` = conexión +
+  `Unirse`, `dispatch` optimista con `roomReducer` y vuelta al último estado confirmado si el hub lo rechaza,
+  descarte de `state` con `version` menor, `onreconnected` → `Unirse` otra vez, `withApi` antepone
+  `VITE_API_URL` a `/imagenes/...`). `roomService` pasó a ser compuesto (`DEMO42` → `LocalRoomService`, resto →
+  SignalR; `create` siempre a la API). `RoomService.addImage` nuevo (local: `item:add` + "subió X"; SignalR:
+  multipart). `RoomPage.addImages` usa `addImage` y muestra el `detail` del servidor como toast.
+  `crossOrigin="anonymous"` en `ItemCard` + `useCORS` en `exportPng`. `.env.example` con `VITE_API_URL`.
+  Docs del frontend, README y CLAUDE.md actualizados (sin el aviso de "sin backend").
+- Verificado: `npm test` (9), `npm run build`, `npm run lint` verdes; `dotnet test` 57 en verde. Prueba manual con
+  compose + Vite en dos pestañas: crear sala, subir 2 imágenes, añadir fila, mover con teclado en B → A lo ve con
+  la misma bitácora, Supr en A → B lo ve, PNG en B sin error de canvas, `DEMO42` funciona, reinicio de la API →
+  A se reconecta y sigue despachando.
+- Decisiones: el texto de bitácora que pasa `act()` se ignora en SignalR (lo genera el servidor). Errores de regla
+  en `Unirse` → `load` devuelve `null` ("no existe"); error de red → `useRoom` muestra "No se pudo conectar con la
+  sala." y `JoinModal` muestra el error en vez de quedarse "Buscando…". Una sola conexión por pestaña (no se
+  cierra al salir de la sala). `ponytail:` estado optimista simple: con dos acciones propias en vuelo, el `state`
+  de la primera puede deshacer un instante la segunda hasta que llega el suyo.
+- Pendientes (Fase 8): PR/merge de `feat/backend-signalr` en el frontend (decide el usuario); `sh docs/docs.sh stale`
+  y sellos `rev` de los docs tocados; README del backend; verificación final con dos perfiles reales.
