@@ -439,5 +439,19 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   15+15 movimientos simultáneos → A y B con el mismo estado (`version` 39); `down` + `up` → sala, imagen y
   `version` siguen; `down -v`. La parte de navegador (dos pestañas, reconexión, PNG, `DEMO42`) se probó en Fase 7.
 - Decisiones: ninguna nueva.
-- Pendientes: fusionar `docs/cierre-backend` en `main` del frontend; prueba con dos perfiles de navegador
-  distintos si se quiere repetir la verificación manual completa.
+- Pendientes: ninguno (ver la prueba en navegador abajo).
+- Prueba en navegador (mismo día): `docs/cierre-backend` fusionada en `main` del frontend. Frontend en contenedor
+  (`Dockerfile` + `nginx.conf` nuevos en el frontend, `:5174`) + compose del backend con
+  `CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://127.0.0.1:5174`. Dos pestañas de Chrome con
+  orígenes distintos (`localhost` y `127.0.0.1`, así cada una tiene su propio apodo). Probado con UI real y scripts
+  en la página: subir, mover con teclado, Supr, añadir/renombrar/vaciar/eliminar fila, tope 15 filas, etiqueta > 20
+  (toast), 25+25 movimientos de fila simultáneos desde las dos pestañas → mismo estado, PNG desde el otro origen
+  sin canvas "tainted", cambiar de sala en la misma pestaña (aislado y vuelve a recibir), sala inexistente,
+  `DEMO42` sin tocar la API, imagen corrupta (toast), reinicio corto de la API.
+- Bugs encontrados y corregidos (frontend `fffc3e2`): (1) con la API caída > ~40 s, `withAutomaticReconnect` se
+  rendía y la pestaña quedaba "En línea" con todos los cambios fallando hasta recargar → reintentos sin fin (tope
+  10 s); (2) durante la caída seguía diciendo "En línea" → evento `online` en `RoomEvent`, TopBar muestra
+  "Conectando…"; (3) si la API estaba caída al abrir la sala se quedaba en "Conectando con la sala…" para siempre
+  → `useRoom` reintenta `load` cada 3 s.
+- Notas: la etiqueta puede verse con más de 20 caracteres mientras se escribe (el servidor rechaza, toast, al
+  salir vuelve al valor guardado); la demo no tenía límite, se deja así.
