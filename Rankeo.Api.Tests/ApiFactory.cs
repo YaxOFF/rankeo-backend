@@ -11,6 +11,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     readonly PostgreSqlContainer _db = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
+    public const string Origen = "http://front.test";
+
     public string ConnectionString => _db.GetConnectionString();
 
     public async Task InitializeAsync()
@@ -18,6 +20,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await _db.StartAsync();
         // Gana sobre el .env local: CargarEnv no pisa variables ya definidas.
         Environment.SetEnvironmentVariable("ConnectionStrings__Rankeo", ConnectionString);
+        Environment.SetEnvironmentVariable("CORS_ORIGINS", Origen);
     }
 
     async Task IAsyncLifetime.DisposeAsync()

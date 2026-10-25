@@ -103,7 +103,7 @@ Errores HTTP como ProblemDetails con `detail` = mensaje de la demo; errores del 
 
 | Método y ruta | Responsabilidad | Entrada → Salida |
 |---|---|---|
-| `POST /api/salas` | Crear sala (`RoomService.create`) | `{ title }` → `201 Room` |
+| `POST /api/salas` | Crear sala (`RoomService.create`) | `{ title }` → `201 Room` (+ `version`); título > 80 → 400 "El título admite máximo 80 caracteres." |
 | `GET /api/salas/{codigo}` | Existe (`RoomService.exists`) | → `204` / `404` "No existe ninguna sala con el código X." |
 | `POST /api/salas/{codigo}/imagenes` | Subir imagen + `item:add` + bitácora "subió X" + broadcast | multipart `archivo`, `nombre`, `apodo` → `201 Item` |
 | `GET /imagenes/{codigo}/{archivo}` | Archivo estático del volumen | `Cache-Control: immutable`, con CORS (necesario para exportar PNG) |
@@ -260,7 +260,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - [x] **Fase 0 — Base** (2026-10-24)
 - [x] **Fase 1 — Dominio** (2026-10-24)
 - [x] **Fase 2 — Datos** (2026-10-24)
-- [ ] **Fase 3 — Salas HTTP**
+- [x] **Fase 3 — Salas HTTP** (2026-10-24)
 - [ ] **Fase 4 — Hub SignalR**
 - [ ] **Fase 5 — Imágenes**
 - [ ] **Fase 6 — Docker**
@@ -323,3 +323,20 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   Pruebas sin paralelismo entre clases (`DisableTestParallelization` en `ApiFactory.cs`): cada fixture pasa su
   cadena por variable de entorno del proceso y en paralelo se pisaban.
 - Pendientes: ninguno para Fase 3.
+
+#### Fase 3 — Salas HTTP (2026-10-24)
+
+- Hecho: `Controllers/SalasController.cs` (`POST /api/salas` → 201 con `Room` + `version` y `Location`;
+  `GET /api/salas/{codigo}` → 204/404), `Services/SalaService.cs` (`Crear`, `Existe`, `Dto`), `Services/Errores.cs`
+  (`ReglaException`, `NoEncontradoException`, `ErroresHandler` → ProblemDetails con `detail` = mensaje).
+  `Program.cs`: controllers, ProblemDetails, CORS desde `CORS_ORIGINS` con `AllowCredentials`, rate limit por IP
+  (`crear` 10/min, `existe` 30/min, ventana fija, 429).
+- Pruebas: `SalasHttpTests.cs` (título vacío → "Mi Tier List" + 5 filas con colores, título guardado, título > 80 → 400
+  problem+json, 204 con código normalizado en la ruta, 404 con mensaje de la demo, CORS permite solo el origen
+  configurado con credenciales, 11.ª creación desde la misma IP → 429). 46 en verde.
+- Decisiones: mensaje nuevo "El título admite máximo 80 caracteres." (la demo solo tiene `maxLength`). El código se
+  genera y se reintenta si ya existe. `SalaService.Dto(sala)` es el payload de estado (lo reutiliza el hub en Fase 4).
+  La política `subir` (60/min) se agrega en Fase 5 con su endpoint. La `ApiFactory` fija `CORS_ORIGINS=http://front.test`.
+  Las pruebas HTTP comparten la IP vacía del TestServer: mantener ≤ 10 creaciones por clase o usar
+  `Server.SendAsync` con otra `RemoteIpAddress`.
+- Pendientes: ninguno para Fase 4.

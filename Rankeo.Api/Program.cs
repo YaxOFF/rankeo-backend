@@ -1,5 +1,7 @@
+using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Rankeo.Api.Data;
+using Rankeo.Api.Services;
 
 CargarEnv();
 
@@ -9,11 +11,35 @@ if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Rankeo"
     throw new InvalidOperationException("Falta ConnectionStrings__Rankeo (ver .env.example).");
 
 builder.Services.AddDbContext<RankeoDb>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Rankeo")));
+builder.Services.AddScoped<SalaService>();
+builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ErroresHandler>();
+
+// Orígenes explícitos (nunca *): SignalR necesita AllowCredentials.
+var origenes = (builder.Configuration["CORS_ORIGINS"] ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(origenes).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+
+// ponytail: por IP directa; detrás de un proxy hace falta UseForwardedHeaders.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    void PorIp(string nombre, int porMinuto) => o.AddPolicy(nombre, http => RateLimitPartition.GetFixedWindowLimiter(
+        http.Connection.RemoteIpAddress?.ToString() ?? "",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = porMinuto, Window = TimeSpan.FromMinutes(1) }));
+    PorIp("crear", 10);
+    PorIp("existe", 30);
+});
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<RankeoDb>().Database.Migrate();
+
+app.UseExceptionHandler();
+app.UseCors();
+app.UseRateLimiter();
+app.MapControllers();
 
 app.Run();
 
