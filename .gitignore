@@ -15,7 +15,7 @@ TestResults/
 !.env.example
 
 # Imágenes subidas en desarrollo local
-data/
+imagenes/
 
 # Sistema
 .DS_Store
