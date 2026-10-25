@@ -133,6 +133,53 @@ public class SalaHubTests(ApiFactory api) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Presence_lista_a_los_conectados_y_se_actualiza_al_salir()
+    {
+        var (codigo, _) = await SalaConImagenes();
+        await using var a = await api.Hub();
+        var soloAna = Siguiente(a, "presence");
+        await a.InvokeAsync<JsonElement>("Unirse", codigo, "Ana");
+        var p = await soloAna;
+        Assert.Equal(["Ana"], p.EnumerateArray().Select(x => x.GetProperty("name").GetString()));
+        Assert.Equal(a.ConnectionId, p[0].GetProperty("id").GetString());
+        Assert.Equal(Calculos.ColorPara("Ana"), p[0].GetProperty("color").GetString());
+
+        var conBeto = Siguiente(a, "presence");
+        var b = await api.Hub();
+        await b.InvokeAsync<JsonElement>("Unirse", codigo, "Beto");
+        Assert.Equal(["Ana", "Beto"], (await conBeto).EnumerateArray().Select(x => x.GetProperty("name").GetString()));
+
+        var sinBeto = Siguiente(a, "presence");
+        await b.DisposeAsync();
+        Assert.Equal(["Ana"], (await sinBeto).EnumerateArray().Select(x => x.GetProperty("name").GetString()));
+    }
+
+    [Fact]
+    public async Task Cursor_llega_a_los_demas_con_nombre_color_y_arrastre()
+    {
+        var (codigo, _) = await SalaConImagenes();
+        await using var a = await api.Hub();
+        await using var b = await api.Hub();
+        await a.InvokeAsync<JsonElement>("Unirse", codigo, "Ana");
+        await b.InvokeAsync<JsonElement>("Unirse", codigo, "Beto");
+        var recibido = Siguiente(b, "cursor");
+        var propio = 0;
+        a.On<JsonElement>("cursor", _ => Interlocked.Increment(ref propio));
+
+        await a.SendAsync("Cursor", 12.5, 300, "i1", false);
+
+        var c = await recibido;
+        Assert.Equal(a.ConnectionId, c.GetProperty("id").GetString());
+        Assert.Equal("Ana", c.GetProperty("name").GetString());
+        Assert.Equal(Calculos.ColorPara("Ana"), c.GetProperty("color").GetString());
+        Assert.Equal(12.5, c.GetProperty("x").GetDouble());
+        Assert.Equal(300, c.GetProperty("y").GetDouble());
+        Assert.Equal("i1", c.GetProperty("dragId").GetString());
+        Assert.False(c.GetProperty("away").GetBoolean());
+        Assert.Equal(0, propio); // nunca vuelve a quien lo manda
+    }
+
+    [Fact]
     public async Task Movimientos_simultaneos_no_se_pierden()
     {
         var (codigo, filas) = await SalaConImagenes();

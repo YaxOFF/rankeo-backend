@@ -69,8 +69,9 @@ Decisiones ya tomadas con el usuario:
 | Común | "Sin cambio" | Si la acción no aplica, el reducer devuelve la misma sala: no se guarda, no se emite, no se registra |
 
 Fuera de alcance porque la demo no lo tiene (no se agrega): cuentas/login, roles o dueño de sala,
-borrar salas, lista de salas, presencia ("quién está conectado"), chat, votos, paginación de bitácora,
-edición de nombre de imagen, moderación. La sala `DEMO42` **se queda en el frontend** (ver Decisiones).
+borrar salas, lista de salas, chat, votos, paginación de bitácora, edición de nombre de imagen, moderación.
+(La presencia "quién está conectado" y los cursores en vivo se agregaron el 2026-10-25 a pedido del usuario;
+ver Bitácora.) La sala `DEMO42` **se queda en el frontend** (ver Decisiones).
 
 ## 2. Modelo de datos
 
@@ -107,6 +108,9 @@ Errores HTTP como ProblemDetails con `detail` = mensaje de la demo; errores del 
 | `GET /api/salas/{codigo}` | Existe (`RoomService.exists`) | → `204` / `404` "No existe ninguna sala con el código X." |
 | `POST /api/salas/{codigo}/imagenes` | Subir imagen + `item:add` + bitácora "subió X" + broadcast | multipart `archivo`, `nombre` (vacío → `'Imagen'`), `apodo` → `201 Item` (`id` = Guid `N`, `url` = `/imagenes/{codigo}/{id}.{ext}`) |
 | `GET /imagenes/{codigo}/{archivo}` | Archivo estático del volumen | `Cache-Control: immutable`, con CORS (necesario para exportar PNG) |
+| `POST /api/salas/{codigo}/derivadas` | Sub-tier list: sala nueva con las mismas filas (vacías, ids nuevos) e imágenes (archivos copiados, todas al banco en orden visual), `parent` = origen; bitácora "creó esta sala a partir de X" si llega `apodo` | `{ title?, apodo? }` → `201 Room`; título vacío → el del padre; rate limit "crear" |
+
+El multipart de imágenes acepta además `subtitulo` (opcional, ≤ 80 → `Item.caption`).
 
 Rate limit nativo por IP: crear 10/min, existe 30/min, subir 60/min → 429.
 
@@ -116,11 +120,14 @@ Rate limit nativo por IP: crear 10/min, existe 30/min, subir 60/min → 429.
 |---|---|---|
 | `Unirse(codigo, apodo)` | Valida sala, guarda apodo en la conexión, `Groups.AddToGroupAsync`, lee estado | → `{ room, activity }` (o `HubException` si no existe) |
 | `Despachar(accion)` | Aplica acción con `FOR UPDATE`; si cambió: guarda, `Version++`, genera texto de bitácora, emite | `RoomAction` (sin `item:add`) → `void` |
+| `Cursor(x, y, dragId, away)` | Reenvía el puntero a `OthersInGroup`; efímero, sin validar ni guardar | → `void` (ignorado si no se unió) |
 
 | Evento (servidor → grupo) | Payload |
 |---|---|
 | `state` | `Room` (con `version`) |
 | `activity` | `ActivityEntry[]` (últimas 100, igual que hoy) |
+| `presence` | `{ id, name, color }[]` — lista completa de conexiones en la sala; se manda al grupo en `Unirse` y en `OnDisconnectedAsync` (singleton `Services/Presencia.cs`, en memoria) |
+| `cursor` | `{ id, name, color, x, y, dragId, away }` — solo a los demás (`OthersInGroup`) |
 
 Acciones aceptadas: `item:move`, `item:delete`, `tier:update`, `tier:add`, `tier:move`, `tier:clear`,
 `tier:delete`, `title:update` — mismo JSON que `RoomAction`, deserializado con
@@ -462,3 +469,27 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   `Fila_guardada_sin_glow_carga_apagada`). Sin bitácora, igual que label/color. Frontend: slider "Brillo" en el
   menú ⚙ (`TierMenu`), halo con `box-shadow` en `TierRow`. Desplegar el backend antes que el frontend: con la API
   vieja el `glow` se ignora y no se guarda.
+
+- 2026-10-25 — Colaboración en vivo (rama `feat/colaboracion-en-vivo` en ambos repos, a pedido del usuario).
+  **Presencia:** singleton `Services/Presencia.cs` (en memoria); `SalaHub.Unirse` y `OnDisconnectedAsync` emiten
+  `presence` (lista completa) al grupo; al cambiar de sala en la misma conexión se avisa también a la anterior.
+  **Cursores:** `SalaHub.Cursor(x, y, dragId, away)` → evento `cursor` a `OthersInGroup`; nada se guarda.
+  **Subtítulo:** `Item.Caption` (`Dominio/Room.cs`), campo `subtitulo` del multipart (`ImagenService.Subir`),
+  `SalaService.MaxSubtitulo` = 80 validado en `Validar(ItemAdd)` y en la subida. **Sub-tier list:**
+  `SalaService.Derivar` + `POST /api/salas/{codigo}/derivadas` (`SalasController`), `Room.Parent`; copia los
+  archivos al volumen de la sala nueva (borrar en una no afecta a la otra) y limpia copias si falla. Sin migración:
+  todo vive en el `jsonb`; salas viejas cargan con `caption`/`parent` null.
+- Pruebas: `dotnet test` 63 (nuevas: `Presence_lista…`, `Cursor_llega…` en `SalaHubTests`; `Subtitulo_se_guarda…`
+  en `ImagenesTests`; `DerivadasTests.cs` con clase propia por el rate limit "crear"). Frontend: `npm test` 12
+  (`derive.test.ts`), `build` y `lint` limpios.
+- Frontend (`rankeo-frontend-`, misma rama): `Presence`/`RemoteCursor` en `types.ts`; `RoomEvent` `presence`/`cursor`;
+  `RoomService.derive`/`sendCursor`; `useRoom().people`; `useCursors.ts`; `CursorLayer`, `CaptionModal`, `DeriveModal`;
+  contador en `RoomPage` (`N imágenes · M sin clasificar`) y en `Bank`; `Sidebar` con "Conectados"; `TopBar` con
+  "Derivada de". Detalle en `docs/MAP.md` y `docs/TAREAS.md` del frontend.
+- Decisiones: la sub-tier list copia también las filas del padre (etiqueta, color, brillo) vacías, no las S–D por
+  defecto; `DEMO42` no se puede derivar (sus imágenes no existen en la API). Cursores en px relativos al tablero
+  (en pantallas de ancho distinto el puntero cae aproximadamente, no exacto). Presencia no sobrevive un reinicio de
+  la API: los clientes se reconectan y vuelven a `Unirse`, así que la lista se reconstruye sola.
+- Pendientes: `sh docs/docs.sh stale` en el frontend marcará los docs hasta sellar `rev` con el commit nuevo.
+  Desplegar backend antes que frontend: con la API vieja el botón "Sub-tier list" da 404 y los cursores/presencia
+  simplemente no llegan.

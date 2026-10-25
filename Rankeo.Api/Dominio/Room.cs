@@ -4,17 +4,20 @@ namespace Rankeo.Api.Dominio;
 
 // Mismo contrato que src/types.ts del frontend (JSON camelCase).
 
-public record Item(string Id, string Name, string Url, string? By = null);
+/// <summary><c>Caption</c>: subtítulo opcional que se pide al subir la imagen (máx 80).</summary>
+public record Item(string Id, string Name, string Url, string? By = null, string? Caption = null);
 
 /// <summary><c>Glow</c>: brillo de la fila, 0 (apagado) a 3. Las salas guardadas antes no lo traen y quedan en 0.</summary>
 public record Tier(string Id, string Label, string Color, IReadOnlyList<string> Items, int Glow = 0);
 
+/// <summary><c>Parent</c>: código de la sala de la que se derivó (sub-tier list), o null.</summary>
 public record Room(
     string Code,
     string Title,
     IReadOnlyList<Tier> Tiers,
     IReadOnlyList<string> Pool,
-    IReadOnlyDictionary<string, Item> Items)
+    IReadOnlyDictionary<string, Item> Items,
+    string? Parent = null)
 {
     /// <summary>Id del contenedor de imágenes sin clasificar.</summary>
     public const string POOL = "pool";

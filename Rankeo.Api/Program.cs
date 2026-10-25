@@ -15,6 +15,7 @@ if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Rankeo"
 builder.Services.AddDbContext<RankeoDb>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Rankeo")));
 builder.Services.AddScoped<SalaService>();
 builder.Services.AddScoped<ImagenService>();
+builder.Services.AddSingleton<Presencia>();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ErroresHandler>();

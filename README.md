@@ -46,16 +46,18 @@ HTTP (errores como ProblemDetails, el mensaje en `detail`):
 |---|---|
 | `POST /api/salas` | Crea sala `{ title }` → `201 Room` |
 | `GET /api/salas/{codigo}` | `204` si existe, `404` si no |
-| `POST /api/salas/{codigo}/imagenes` | Multipart `archivo`, `nombre`, `apodo` → `201 Item` (webp/png/jpeg/gif) |
+| `POST /api/salas/{codigo}/imagenes` | Multipart `archivo`, `nombre`, `apodo`, `subtitulo` (opcional, ≤ 80) → `201 Item` (webp/png/jpeg/gif) |
+| `POST /api/salas/{codigo}/derivadas` | Sub-tier list `{ title?, apodo? }` → `201 Room` nueva con las mismas filas (vacías) e imágenes (copiadas, todas en el banco), `parent` = código origen |
 | `GET /imagenes/{codigo}/{archivo}` | Imagen estática, con CORS y caché `immutable` |
 
-Rate limit por IP: crear 10/min, existe 30/min, subir 60/min.
+Rate limit por IP: crear 10/min (también derivadas), existe 30/min, subir 60/min.
 
 SignalR en `/hubs/sala`:
 
 - `Unirse(codigo, apodo)` → `{ room, activity }`.
 - `Despachar(accion)` con un `RoomAction` (`item:move`, `item:delete`, `tier:*`, `title:update`).
-- Eventos al grupo: `state` (`Room` + `version`) y `activity` (últimas 100 entradas).
+- `Cursor(x, y, dragId, away)`: tu puntero (px relativos al tablero) y la imagen que arrastras; se reenvía a los demás sin guardarse.
+- Eventos al grupo: `state` (`Room` + `version`), `activity` (últimas 100 entradas), `presence` (conectados: `{ id, name, color }[]`, al entrar/salir) y `cursor` (`{ id, name, color, x, y, dragId, away }`, solo a los demás).
 
 El servidor calcula el texto y color de la bitácora, el autor y la URL; el cliente nunca los manda.
 

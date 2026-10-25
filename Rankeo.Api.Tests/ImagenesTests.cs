@@ -66,6 +66,30 @@ public class ImagenesTests(ApiFactory api) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Subtitulo_se_guarda_recortado_vacio_es_null_y_mas_de_80_da_400()
+    {
+        var codigo = await Sala();
+        async Task<HttpResponseMessage> Con(string subtitulo)
+        {
+            var form = new MultipartFormDataContent
+            {
+                { new ByteArrayContent(Png), "archivo", "gato.png" }, { new StringContent("Ana"), "apodo" },
+                { new StringContent("Gato"), "nombre" }, { new StringContent(subtitulo), "subtitulo" },
+            };
+            return await api.CreateClient().PostAsync($"/api/salas/{codigo}/imagenes", form);
+        }
+        var item = await (await Con("  el mejor  ")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("el mejor", item.GetProperty("caption").GetString());
+
+        item = await (await Con("   ")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("caption").ValueKind);
+
+        var r = await Con(new string('x', 81));
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Equal("El subtítulo admite máximo 80 caracteres.", await Detalle(r));
+    }
+
+    [Fact]
     public async Task Sin_nombre_usa_Imagen()
     {
         var r = await Subir(await Sala(), Png, nombre: "  ");

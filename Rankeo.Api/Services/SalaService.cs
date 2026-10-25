@@ -22,6 +22,65 @@ public class SalaService(RankeoDb db, IConfiguration cfg)
         return sala;
     }
 
+    /// <summary>
+    /// Sub-tier list: sala nueva con las mismas filas (vacías, ids nuevos) y las mismas imágenes, todas en el banco.
+    /// Los archivos se copian al volumen de la sala nueva: borrar en una no afecta a la otra.
+    /// </summary>
+    public async Task<Sala> Derivar(string codigo, string? titulo, string? apodo)
+    {
+        if (titulo?.Length > 80) throw new ReglaException("El título admite máximo 80 caracteres.");
+        if (apodo is not null) apodo = Apodo(apodo);
+        var origen = await Cargar(codigo);
+        var padre = origen.Estado;
+
+        string nuevo;
+        do nuevo = Calculos.GenerarCodigo();
+        while (await db.Salas.AnyAsync(s => s.Codigo == nuevo));
+
+        var items = new Dictionary<string, Item>();
+        var copiados = new List<string>();
+        try
+        {
+            // El banco conserva el orden visual del padre: filas de arriba a abajo y luego el banco.
+            foreach (var id in padre.Tiers.SelectMany(t => t.Items).Concat(padre.Pool))
+            {
+                if (!padre.Items.TryGetValue(id, out var item)) continue;
+                var imagen = Guid.TryParse(id, out var guid) ? await db.Imagenes.FindAsync(guid) : null;
+                if (imagen is null) { items[id] = item; continue; }
+
+                var nuevoId = Guid.NewGuid();
+                var archivo = $"{nuevoId:N}{Path.GetExtension(imagen.Archivo)}";
+                var ruta = ImagenService.Ruta(cfg, nuevo, archivo);
+                Directory.CreateDirectory(Path.GetDirectoryName(ruta)!);
+                File.Copy(ImagenService.Ruta(cfg, origen.Codigo, imagen.Archivo), ruta);
+                copiados.Add(ruta);
+                db.Imagenes.Add(new Imagen { Id = nuevoId, SalaCodigo = nuevo, Archivo = archivo, Bytes = imagen.Bytes });
+                items[nuevoId.ToString("N")] = item with { Id = nuevoId.ToString("N"), Url = $"/imagenes/{nuevo}/{archivo}" };
+            }
+
+            var estado = new Room(
+                nuevo,
+                string.IsNullOrEmpty(titulo) ? padre.Title : titulo,
+                padre.Tiers.Select(t => t with { Id = Calculos.NuevoId(), Items = [] }).ToList(),
+                [.. items.Keys],
+                items,
+                origen.Codigo);
+            var sala = new Sala { Codigo = nuevo, Estado = estado };
+            db.Salas.Add(sala);
+            if (apodo is not null)
+                db.Bitacora.Add(new EntradaBitacora { SalaCodigo = nuevo, Quien = apodo, Color = Calculos.ColorPara(apodo), Texto = $"creó esta sala a partir de {origen.Codigo}" });
+            await db.SaveChangesAsync();
+            return sala;
+        }
+        catch
+        {
+            foreach (var ruta in copiados) File.Delete(ruta); // sin huérfanos en el volumen
+            var dir = Path.Combine(ImagenService.Dir(cfg), nuevo);
+            if (Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any()) Directory.Delete(dir);
+            throw;
+        }
+    }
+
     public async Task Existe(string codigo)
     {
         codigo = Calculos.NormalizarCodigo(codigo);
@@ -71,6 +130,7 @@ public class SalaService(RankeoDb db, IConfiguration cfg)
     }
 
     public const int MaxImagenes = 200;
+    public const int MaxSubtitulo = 80;
 
     public static string Apodo(string? apodo)
     {
@@ -87,8 +147,9 @@ public class SalaService(RankeoDb db, IConfiguration cfg)
     {
         switch (accion)
         {
-            case ItemAdd:
+            case ItemAdd a:
                 if (room.Items.Count >= MaxImagenes) throw new ReglaException($"Máximo {MaxImagenes} imágenes por sala.");
+                if (a.Item.Caption?.Length > MaxSubtitulo) throw new ReglaException($"El subtítulo admite máximo {MaxSubtitulo} caracteres.");
                 break;
             case TierAdd a:
                 if (room.Tiers.Count >= Room.MAX_TIERS) throw new ReglaException($"Máximo {Room.MAX_TIERS} filas.");
@@ -111,5 +172,5 @@ public class SalaService(RankeoDb db, IConfiguration cfg)
 
     /// <summary>Estado que ve el cliente: <c>Room</c> de types.ts + <c>version</c>.</summary>
     public static object Dto(Sala s) =>
-        new { s.Estado.Code, s.Estado.Title, s.Estado.Tiers, s.Estado.Pool, s.Estado.Items, s.Version };
+        new { s.Estado.Code, s.Estado.Title, s.Estado.Tiers, s.Estado.Pool, s.Estado.Items, s.Estado.Parent, s.Version };
 }
