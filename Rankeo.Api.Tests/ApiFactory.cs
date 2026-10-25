@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.PostgreSql;
 
+// Cada ApiFactory pasa su cadena por una variable de entorno del proceso: las clases no pueden correr a la vez.
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+
 namespace Rankeo.Api.Tests;
 
 // API real (TestServer) contra un Postgres real en contenedor; una instancia por clase de prueba.

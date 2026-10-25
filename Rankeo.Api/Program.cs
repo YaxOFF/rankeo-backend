@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using Rankeo.Api.Data;
+
 CargarEnv();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,7 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Rankeo")))
     throw new InvalidOperationException("Falta ConnectionStrings__Rankeo (ver .env.example).");
 
+builder.Services.AddDbContext<RankeoDb>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Rankeo")));
+
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+    scope.ServiceProvider.GetRequiredService<RankeoDb>().Database.Migrate();
 
 app.Run();
 

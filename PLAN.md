@@ -84,7 +84,7 @@ normalizar.
 
 | Tabla | Columnas | Restricciones |
 |---|---|---|
-| `Salas` | `Codigo char(6) PK`, `Estado jsonb NOT NULL` (`{title, tiers, pool, items}`), `Version bigint NOT NULL DEFAULT 0`, `CreadaEn timestamptz` | CHECK `Codigo ~ '^[A-HJ-NP-Z2-9]{6}$'` |
+| `Salas` | `Codigo char(6) PK`, `Estado jsonb NOT NULL` (`Room` completo: `{code, title, tiers, pool, items}`), `Version bigint NOT NULL DEFAULT 0`, `CreadaEn timestamptz` | CHECK `Codigo ~ '^[A-HJ-NP-Z2-9]{6}$'` |
 | `Bitacora` | `Id bigint identity PK`, `SalaCodigo char(6)`, `Quien varchar(30)`, `Color varchar(24)`, `Texto varchar(120)`, `En timestamptz` | FK → `Salas` **CASCADE**; índice `(SalaCodigo, Id DESC)` |
 | `Imagenes` | `Id uuid PK`, `SalaCodigo char(6)`, `Archivo varchar(80)`, `Bytes int`, `SubidaEn timestamptz` | FK → `Salas` **CASCADE**; CHECK `Bytes > 0` |
 
@@ -259,7 +259,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - [x] **Plan** — plan aprobado, `PLAN.md` y `CLAUDE.md` creados, repo git local creado (2026-10-24).
 - [x] **Fase 0 — Base** (2026-10-24)
 - [x] **Fase 1 — Dominio** (2026-10-24)
-- [ ] **Fase 2 — Datos**
+- [x] **Fase 2 — Datos** (2026-10-24)
 - [ ] **Fase 3 — Salas HTTP**
 - [ ] **Fase 4 — Hub SignalR**
 - [ ] **Fase 5 — Imágenes**
@@ -309,3 +309,17 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - Pendientes: los mensajes "Máximo 15 filas." y "La tier list necesita al menos una fila." los lanza
   `SalaService` (Fase 4) como `ReglaException` antes de aplicar, porque el reducer solo devuelve "sin cambio".
   `AllowOutOfOrderMetadataProperties` en las opciones JSON del hub (Fase 4).
+
+#### Fase 2 — Datos (2026-10-24)
+
+- Hecho: `Modelos/Entidades.cs` (`Sala`, `EntradaBitacora`, `Imagen`), `Data/RankeoDb.cs` (tablas `Salas`,
+  `Bitacora`, `Imagenes`; `char(6)`, CHECK de código y de `Bytes`, FK CASCADE, índice `(SalaCodigo, Id DESC)`),
+  migración `Data/Migrations/*_Inicial.cs`, `AddDbContext` + `Database.Migrate()` al arrancar en `Program.cs`.
+- Pruebas: `DatosTests.cs` (migración sin pendientes, CHECK rechaza `ABC10O`/`abcdef`/`ABCDE`, jsonb camelCase
+  ida y vuelta + consulta `Estado->>'title'`, CASCADE de bitácora). 39 en verde.
+- Decisiones: `Sala.Estado` es `Room` con `HasConversion` a JSON (`JsonSerializerOptions.Web`) en columna `jsonb`;
+  se guarda el `Room` completo, incluido `code` (duplicado inofensivo, evita otro record). Sin `ValueComparer`:
+  `Room` es inmutable y el reducer devuelve otra instancia, así que la comparación por referencia detecta el cambio.
+  Pruebas sin paralelismo entre clases (`DisableTestParallelization` en `ApiFactory.cs`): cada fixture pasa su
+  cadena por variable de entorno del proceso y en paralelo se pisaban.
+- Pendientes: ninguno para Fase 3.
