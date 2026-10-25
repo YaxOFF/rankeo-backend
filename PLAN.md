@@ -258,7 +258,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 
 - [x] **Plan** — plan aprobado, `PLAN.md` y `CLAUDE.md` creados, repo git local creado (2026-10-24).
 - [x] **Fase 0 — Base** (2026-10-24)
-- [ ] **Fase 1 — Dominio**
+- [x] **Fase 1 — Dominio** (2026-10-24)
 - [ ] **Fase 2 — Datos**
 - [ ] **Fase 3 — Salas HTTP**
 - [ ] **Fase 4 — Hub SignalR**
@@ -291,3 +291,21 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   siguen 5432 (db) y 8080 (api).
 - Pendientes: `Microsoft.AspNetCore.SignalR.Client` se agrega a las pruebas en Fase 4.
 
+#### Fase 1 — Dominio (2026-10-24)
+
+- Hecho: `Dominio/Room.cs` (records `Room/Tier/Item` con `IReadOnlyList`/`IReadOnlyDictionary`, constantes
+  `Room.POOL` y `Room.MAX_TIERS`, `RoomAction` polimórfico con discriminador `type` y las 9 acciones, incluida
+  `item:add`), `Dominio/RoomReducer.cs` (port 1:1 con `with`; devuelve la misma instancia si no aplica; también
+  `ListOf` y `ContainerOf`), `Services/Calculos.cs` (`GenerarCodigo`, `NormalizarCodigo`, `NuevoId`, `ColorPara`,
+  `NuevaSala`, `TextoBitacora`, `TIER_COLORS`).
+- Pruebas: `RoomReducerTests.cs` (9 casos portados con los mismos nombres + "no aplica → misma referencia" por
+  acción + tope de 15 filas, índice acotado, `tier:update` parcial), `CalculosTests.cs` (vectores de `colorFor`
+  generados con Node, incluidos emoji y sustitutos sueltos). 34 en verde.
+- Decisiones: `GenerarCodigo` usa `RandomNumberGenerator.GetString` (el código es la llave); no hace falta excluir
+  `DEMO42` porque la "O" no está en el alfabeto. `NuevoId` = 8 chars base36 como `newId()`. `NuevaSala` usa el
+  título por defecto solo si viene vacío (igual que `newRoom`; `Hero` ya hace `trim`). `TextoBitacora(antes, accion)`
+  se calcula con el estado previo y devuelve `null` cuando no se registra; si la imagen no existe usa "la imagen"
+  (como `itemName`). `Room` incluye `Code` (igual que `types.ts`); el jsonb de Fase 2 decide si se guarda.
+- Pendientes: los mensajes "Máximo 15 filas." y "La tier list necesita al menos una fila." los lanza
+  `SalaService` (Fase 4) como `ReglaException` antes de aplicar, porque el reducer solo devuelve "sin cambio".
+  `AllowOutOfOrderMetadataProperties` en las opciones JSON del hub (Fase 4).
