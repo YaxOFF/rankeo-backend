@@ -1,0 +1,22 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+TestResults/
+*.swp
+
+# Variables de entorno (credenciales)
+.env
+.env.*
+!.env.example
+
+# Imágenes subidas en desarrollo local
+data/
+
+# Sistema
+.DS_Store
+Thumbs.db
