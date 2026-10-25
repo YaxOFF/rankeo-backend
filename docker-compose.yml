@@ -16,5 +16,22 @@ services:
       retries: 10
     restart: unless-stopped
 
+  api:
+    build: Rankeo.Api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Rankeo: Host=db;Port=5432;Database=rankeo;Username=rankeo;Password=${POSTGRES_PASSWORD}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      IMAGENES_DIR: /data/imagenes
+      IMAGEN_MAX_KB: ${IMAGEN_MAX_KB:-512}
+    ports:
+      - "${API_PORT:-8088}:8080"
+    volumes:
+      - imagenes:/data/imagenes
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  imagenes:

@@ -171,7 +171,7 @@ rankeo-backend/
 `.env.example`: `POSTGRES_PASSWORD` (obligatoria, `${VAR:?}`), `DB_PORT`, `API_PORT`,
 `ConnectionStrings__Rankeo` (localhost para `dotnet run`; compose la arma con `Host=db`),
 `CORS_ORIGINS` (lista separada por comas, p. ej. `http://localhost:5173`), `IMAGENES_DIR`
-(default `/data/imagenes`), `IMAGEN_MAX_KB` (default 512).
+(`./data/imagenes` para `dotnet run`; compose fija `/data/imagenes`), `IMAGEN_MAX_KB` (default 512).
 
 Al arrancar: `Database.Migrate()` y crear `IMAGENES_DIR` si falta. Sin semilla (la demo vive en el frontend).
 
@@ -263,7 +263,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - [x] **Fase 3 — Salas HTTP** (2026-10-24)
 - [x] **Fase 4 — Hub SignalR** (2026-10-24)
 - [x] **Fase 5 — Imágenes** (2026-10-24)
-- [ ] **Fase 6 — Docker**
+- [x] **Fase 6 — Docker** (2026-10-24)
 - [ ] **Fase 7 — Frontend**
 - [ ] **Fase 8 — Cierre**
 
@@ -387,3 +387,19 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - Pendientes (Fase 6): el volumen `imagenes:/data/imagenes` en compose; en local con `dotnet run`, `IMAGENES_DIR`
   del `.env` (`/data/imagenes`) cae en la raíz de la unidad actual: usar p. ej. `./data/imagenes` (ignorado por git).
 
+
+#### Fase 6 — Docker (2026-10-24)
+
+- Hecho: `Rankeo.Api/Dockerfile` multi-stage (`sdk:10.0` → `aspnet:10.0`, restore en capa propia, corre como el
+  usuario `app` no root, crea `/data/imagenes` con dueño `app` para que el volumen con nombre herede el permiso),
+  `Rankeo.Api/.dockerignore`. `docker-compose.yml` con servicio `api` (build `Rankeo.Api`, `depends_on db healthy`,
+  `${API_PORT:-8088}:8080`, volumen `imagenes:/data/imagenes`, `restart: unless-stopped`).
+- Verificado: `DB_PORT=5441 API_PORT=8089 docker compose -p rankeo-prueba up --build` → crear sala, subir PNG
+  (201), `down` + `up` → sala 204, imagen 200, fila con `Version` 1 y 1 item en el banco; `down -v`. 57 pruebas en verde.
+- Decisiones: compose pasa variables explícitas al `api` (no `env_file`): arma `ConnectionStrings__Rankeo` con
+  `Host=db` y `POSTGRES_PASSWORD`, y fija `IMAGENES_DIR=/data/imagenes`; `CORS_ORIGINS` e `IMAGEN_MAX_KB` salen del
+  `.env`. En el contenedor no hay `.env` (`CargarEnv` no encuentra nada y no pasa nada). `IMAGENES_DIR` del
+  `.env`/`.env.example` pasó a `./data/imagenes` (para `dotnet run`, ignorado por git). La API se publica en todas las
+  interfaces (el frontend va en otro contenedor/origen); la base solo en `127.0.0.1`.
+- Pendientes (Fase 7): el frontend apunta `VITE_API_URL` a `http://localhost:8088` (compose) y `CORS_ORIGINS` debe
+  incluir su origen (`http://localhost:5173` por defecto).
