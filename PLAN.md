@@ -261,7 +261,7 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
 - [x] **Fase 1 — Dominio** (2026-10-24)
 - [x] **Fase 2 — Datos** (2026-10-24)
 - [x] **Fase 3 — Salas HTTP** (2026-10-24)
-- [ ] **Fase 4 — Hub SignalR**
+- [x] **Fase 4 — Hub SignalR** (2026-10-24)
 - [ ] **Fase 5 — Imágenes**
 - [ ] **Fase 6 — Docker**
 - [ ] **Fase 7 — Frontend**
@@ -340,3 +340,28 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   Las pruebas HTTP comparten la IP vacía del TestServer: mantener ≤ 10 creaciones por clase o usar
   `Server.SendAsync` con otra `RemoteIpAddress`.
 - Pendientes: ninguno para Fase 4.
+
+#### Fase 4 — Hub SignalR (2026-10-24)
+
+- Hecho: `Hubs/SalaHub.cs` (`Unirse(codigo, apodo)` → `{ room, activity }`, guarda sala y apodo en `Context.Items`,
+  cambia de grupo si ya estaba en otra sala; `Despachar(accion)` → emite `state` al grupo y `activity` solo si la
+  acción dejó bitácora, siempre después del commit). `SalaService`: `Cargar`, `Actividad` (últimas 100 como
+  `ActivityEntry`, `id` = Id de la fila como string, `at` en ms) y `Aplicar(codigo, accion, apodo)` (transacción +
+  `SELECT … FOR UPDATE` vía `FromSql(...).ToListAsync()` sin componer, validaciones, reducer, `Version++`, bitácora).
+  `Program.cs`: `AddSignalR().AddJsonProtocol` con `AllowOutOfOrderMetadataProperties`, `RespectNullableAnnotations`
+  y `RespectRequiredConstructorParameters` (un campo obligatorio que falta o llega null se rechaza al deserializar),
+  `MapHub<SalaHub>("/hubs/sala")`.
+- Pruebas: `SalaHubTests.cs` (unirse con código en minúsculas devuelve sala + bitácora con autor y color; sala
+  inexistente / apodo vacío / despachar sin unirse → `HubException`; A mueve → B recibe `state` y `activity`
+  con "movió Gato a la fila S", con `type` al final del JSON; acción que no aplica no emite y `tier:update` emite
+  `state` sin `activity`; reglas → `HubException`; 20+20 movimientos simultáneos → `version` y bitácora = 42).
+  `ApiFactory.Hub()` conecta por long polling al TestServer. 52 en verde.
+- Decisiones: mensajes nuevos (la demo no los tiene): "El apodo debe tener entre 1 y 30 caracteres.",
+  "Primero únete a una sala.", "Las imágenes se suben por HTTP.", "Id de fila inválido.", "Color inválido.",
+  "La etiqueta admite máximo 20 caracteres.". "La tier list necesita al menos una fila." se lanza con 1 fila aunque
+  el id no exista (igual que `onDelete` de la demo). `Aplicar` sí acepta `item:add`: lo bloquea el hub, y la Fase 5
+  lo llama desde el endpoint de subida. `Aplicar` devuelve `null` si no aplica (nada se guarda ni se emite).
+  Con escrituras concurrentes, los `state` pueden llegar fuera de orden: el cliente descarta por `version` (§8.2).
+- Pendientes (Fase 5): el endpoint de subida debe llamar `Aplicar(codigo, new ItemAdd(...), apodo)` y emitir
+  `state`/`activity` con `IHubContext<SalaHub>`; `item:delete` debe borrar archivo y fila de `Imagenes` (hoy solo
+  quita el item del estado). Límite de 200 imágenes por sala va en esa fase.

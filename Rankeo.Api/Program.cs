@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Rankeo.Api.Data;
+using Rankeo.Api.Hubs;
 using Rankeo.Api.Services;
 
 CargarEnv();
@@ -15,6 +16,13 @@ builder.Services.AddScoped<SalaService>();
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ErroresHandler>();
+builder.Services.AddSignalR().AddJsonProtocol(o =>
+{
+    // El cliente no garantiza que "type" vaya primero; y null/campos faltantes se rechazan al deserializar.
+    o.PayloadSerializerOptions.AllowOutOfOrderMetadataProperties = true;
+    o.PayloadSerializerOptions.RespectNullableAnnotations = true;
+    o.PayloadSerializerOptions.RespectRequiredConstructorParameters = true;
+});
 
 // Orígenes explícitos (nunca *): SignalR necesita AllowCredentials.
 var origenes = (builder.Configuration["CORS_ORIGINS"] ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
@@ -40,6 +48,7 @@ app.UseExceptionHandler();
 app.UseCors();
 app.UseRateLimiter();
 app.MapControllers();
+app.MapHub<SalaHub>("/hubs/sala");
 
 app.Run();
 

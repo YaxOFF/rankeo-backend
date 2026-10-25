@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.SignalR.Client;
 using Testcontainers.PostgreSql;
 
 // Cada ApiFactory pasa su cadena por una variable de entorno del proceso: las clases no pueden correr a la vez.
@@ -14,6 +16,20 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public const string Origen = "http://front.test";
 
     public string ConnectionString => _db.GetConnectionString();
+
+    /// <summary>Conexión al hub contra el TestServer (long polling: el TestServer no abre sockets reales).</summary>
+    public async Task<HubConnection> Hub()
+    {
+        var conexion = new HubConnectionBuilder()
+            .WithUrl(new Uri(Server.BaseAddress, "/hubs/sala"), o =>
+            {
+                o.HttpMessageHandlerFactory = _ => Server.CreateHandler();
+                o.Transports = HttpTransportType.LongPolling;
+            })
+            .Build();
+        await conexion.StartAsync();
+        return conexion;
+    }
 
     public async Task InitializeAsync()
     {
