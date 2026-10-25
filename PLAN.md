@@ -10,7 +10,7 @@ mismos cambios al momento.
 
 | Qué | Ruta |
 |---|---|
-| Backend (este repo) | `D:\YaxonFolder\Github\rankeo-backend` → sin remoto todavía (solo local; agregar con `git remote add origin <url>`) |
+| Backend (este repo) | `D:\YaxonFolder\Github\rankeo-backend` → remoto `origin` = https://github.com/YaxOFF/rankeo-backend |
 | Frontend | `D:\YaxonFolder\Github\rankeo-frontend` (repo git; push al remoto `yaxoff` = https://github.com/YaxOFF/rankeo-frontend- ; `origin` = David54s, sin permiso de push) |
 | Docs del frontend (leer primero) | `rankeo-frontend/docs/MAP.md`, `docs/architecture/state-management.md`, `docs/architecture/data-layer.md` |
 | Lógica de negocio a portar | `src/room/roomReducer.ts` (todas las mutaciones), `src/room/roomService.ts` (bitácora, códigos, demo) |
