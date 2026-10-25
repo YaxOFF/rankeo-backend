@@ -98,6 +98,7 @@ public class SalaService(RankeoDb db, IConfiguration cfg)
             case TierUpdate a:
                 if (a.Label?.Length > 20) throw new ReglaException("La etiqueta admite máximo 20 caracteres.");
                 if (a.Color is not null && !Color.IsMatch(a.Color)) throw new ReglaException("Color inválido.");
+                if (a.Glow is < 0 or > 3) throw new ReglaException("Glow inválido.");
                 break;
             case TierDelete:
                 if (room.Tiers.Count <= 1) throw new ReglaException("La tier list necesita al menos una fila.");

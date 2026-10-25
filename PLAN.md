@@ -455,3 +455,10 @@ Principio: las vistas no cambian; solo se cambia la implementación de `RoomServ
   → `useRoom` reintenta `load` cada 3 s.
 - Notas: la etiqueta puede verse con más de 20 caracteres mientras se escribe (el servidor rechaza, toast, al
   salir vuelve al valor guardado); la demo no tenía límite, se deja así.
+
+- 2026-10-24 — Brillo (glow) por fila. `Tier` gana `Glow` (0–3, default 0) y `TierUpdate` gana `Glow?`
+  (`Dominio/Room.cs`, `RoomReducer.cs`); `Validar` rechaza fuera de rango con "Glow inválido." (`SalaService.cs`).
+  Sin migración: el estado es `jsonb` y las salas guardadas sin `glow` cargan con 0 (test
+  `Fila_guardada_sin_glow_carga_apagada`). Sin bitácora, igual que label/color. Frontend: slider "Brillo" en el
+  menú ⚙ (`TierMenu`), halo con `box-shadow` en `TierRow`. Desplegar el backend antes que el frontend: con la API
+  vieja el `glow` se ignora y no se guarda.

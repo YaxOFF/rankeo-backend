@@ -57,6 +57,7 @@ public static class RoomReducer
                     {
                         Label = a.Label ?? t.Label,
                         Color = a.Color ?? t.Color,
+                        Glow = a.Glow ?? t.Glow,
                     }).ToList(),
                 };
 

@@ -121,6 +121,8 @@ public class SalaHubTests(ApiFactory api) : IClassFixture<ApiFactory>
         Assert.Contains("Id de fila inválido.", e.Message);
         e = await Assert.ThrowsAsync<HubException>(() => a.InvokeAsync("Despachar", new { type = "tier:update", id = filas[0], color = "red" }));
         Assert.Contains("Color inválido.", e.Message);
+        e = await Assert.ThrowsAsync<HubException>(() => a.InvokeAsync("Despachar", new { type = "tier:update", id = filas[0], glow = 5 }));
+        Assert.Contains("Glow inválido.", e.Message);
         e = await Assert.ThrowsAsync<HubException>(() => a.InvokeAsync("Despachar", new { type = "item:add", item = new { id = "z", name = "z", url = "z" } }));
         Assert.Contains("Las imágenes se suben por HTTP.", e.Message);
         await Assert.ThrowsAsync<HubException>(() => a.InvokeAsync("Despachar", new { type = "title:update" })); // falta title

@@ -6,7 +6,8 @@ namespace Rankeo.Api.Dominio;
 
 public record Item(string Id, string Name, string Url, string? By = null);
 
-public record Tier(string Id, string Label, string Color, IReadOnlyList<string> Items);
+/// <summary><c>Glow</c>: brillo de la fila, 0 (apagado) a 3. Las salas guardadas antes no lo traen y quedan en 0.</summary>
+public record Tier(string Id, string Label, string Color, IReadOnlyList<string> Items, int Glow = 0);
 
 public record Room(
     string Code,
@@ -35,7 +36,7 @@ public abstract record RoomAction;
 public record ItemAdd(Item Item) : RoomAction;
 public record ItemMove(string Id, string Target, int? Index = null) : RoomAction;
 public record ItemDelete(string Id) : RoomAction;
-public record TierUpdate(string Id, string? Label = null, string? Color = null) : RoomAction;
+public record TierUpdate(string Id, string? Label = null, string? Color = null, int? Glow = null) : RoomAction;
 public record TierAdd(string Id, string Color) : RoomAction;
 /// <summary><c>Dir</c> es <c>"up"</c> o <c>"down"</c>.</summary>
 public record TierMove(string Id, string Dir) : RoomAction;

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Rankeo.Api.Dominio;
 using Rankeo.Api.Services;
 using static Rankeo.Api.Dominio.RoomReducer;
@@ -150,5 +151,14 @@ public class RoomReducerTests
         var s = room.Tiers[0];
         var tier = Reduce(room, new TierUpdate(s.Id, Label: "Top")).Tiers[0];
         Assert.Equal(("Top", s.Color), (tier.Label, tier.Color));
+        tier = Reduce(room, new TierUpdate(s.Id, Glow: 2)).Tiers[0];
+        Assert.Equal((s.Label, s.Color, 2), (tier.Label, tier.Color, tier.Glow));
+    }
+
+    [Fact]
+    public void Fila_guardada_sin_glow_carga_apagada()
+    {
+        var json = """{"id":"s","label":"S","color":"#c96063","items":[]}""";
+        Assert.Equal(0, JsonSerializer.Deserialize<Tier>(json, JsonSerializerOptions.Web)!.Glow);
     }
 }
